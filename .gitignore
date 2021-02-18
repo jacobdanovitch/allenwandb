@@ -1,0 +1,7 @@
+*.pyc
+.mypy_cache/
+**/.pytest_cache/
+**/.ipynb_checkpoints
+wandb/
+.vscode/
+*.egg-info
