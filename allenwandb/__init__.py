@@ -5,7 +5,7 @@ from pathlib import Path
 from allennlp.training import TrainerCallback, GradientDescentTrainer
 from allennlp.data import TensorDict
 
-import os, json
+import os, json, atexit
 import wandb
 import logging
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -50,6 +50,7 @@ class WandbLoggerCallback(TrainerCallback):
         self, trainer: GradientDescentTrainer, is_primary: bool = True, **kwargs
     ) -> None:
         self.trainer = trainer
+        self.is_primary = is_primary
         if not is_primary:
             return
         
@@ -58,6 +59,8 @@ class WandbLoggerCallback(TrainerCallback):
         
         self.run = wandb.init(**self._init_args, config=config)
         self.run.watch(trainer.model, log="all")
+
+        atexit.register(self.__on_exit__)
 
     def on_batch(
         self,
@@ -101,10 +104,13 @@ class WandbLoggerCallback(TrainerCallback):
         if not is_primary:
             return
 
-        print(metrics)
         self.run.log(metrics)
-        self.run.summary.update(metrics)
+        # self.run.summary.update(metrics)
 
+    def __on_exit__(self):
+        if not self.is_primary:
+            return
+        
         for f in self.serialization_dir.glob('**/.lock'):
             f.unlink(missing_ok=True)
 
@@ -112,4 +118,10 @@ class WandbLoggerCallback(TrainerCallback):
         artifact.add_dir(str(self.serialization_dir))
 
         self.run.log_artifact(artifact)
-        # self.run.finish()
+
+        with (self.serialization_dir / 'metrics.json').open() as f:
+            metrics = json.loads(f.read())
+    
+        self.run.log(metrics)
+        self.run.summary.update(metrics)
+        self.run.finish()
