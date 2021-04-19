@@ -101,6 +101,8 @@ class WandbLoggerCallback(TrainerCallback):
         if not is_primary:
             return
 
+        print(metrics)
+        self.run.log(metrics)
         self.run.summary.update(metrics)
 
         for f in self.serialization_dir.glob('**/.lock'):
@@ -110,4 +112,4 @@ class WandbLoggerCallback(TrainerCallback):
         artifact.add_dir(str(self.serialization_dir))
 
         self.run.log_artifact(artifact)
-        self.run.finish()
+        # self.run.finish()
